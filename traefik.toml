@@ -1,0 +1,22 @@
+[api]
+    insecure = true
+    dashboard = true
+
+[entryPoints]
+    [entryPoints.web]
+    address = ":80"
+
+    [entryPoints.websecure]
+    address = ":443"
+
+[providers.docker]
+    swarmMode = true
+    exposedByDefault = false
+
+# Configuracao dos certificados
+[providers.file]
+  directory = "/etc/traefik/dynamic/"
+  watch = true
+
+[metrics]
+    [metrics.prometheus]

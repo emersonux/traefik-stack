@@ -1,0 +1,66 @@
+version: "3.3"
+
+services:
+
+  traefik:
+    image: "traefik:latest"
+    container_name: "traefik"
+    #command:
+      #- "--log.level=DEBUG"
+      #- "--api.insecure=true"
+      #- "--providers.docker=true"
+      #- "--providers.docker.swarmmode=true"
+      #- "--providers.docker.exposedbydefault=false"
+      #- "--entrypoints.web.address=:80"
+      #- "--entryPoints.websecure.address=:443"
+      # Redirect para todos os Sites.
+      #- "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      #- "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      #- "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      #- "--metrics.prometheus=true"
+      #- "--accesslog"
+      #- "--log"
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "443:443"
+    networks:
+      - webgateway
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.toml:/etc/traefik/traefik.toml
+      # Local dos certificados SSL
+      - ./certs:/certs
+      - ./dynamic:/etc/traefik/dynamic
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+  viz:
+    image: dockersamples/visualizer
+    networks:
+      - webgateway
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.middlewares.viz-redirect-websecure.redirectscheme.scheme=https
+        - traefik.http.routers.viz-web.middlewares=viz-redirect-websecure
+        - traefik.http.routers.viz-web.rule=Host(`viz.exemplo.net`)
+        - traefik.http.routers.viz-web.entrypoints=web
+        - traefik.http.routers.viz-websecure.rule=Host(`viz.exemplo.net`)
+        - traefik.http.routers.viz-websecure.tls.certresolver=mytlschallenge
+        - traefik.http.routers.viz-websecure.tls=true
+        - traefik.http.routers.viz-websecure.entrypoints=websecure
+        - traefik.http.services.viz-websecure.loadbalancer.server.port=8080
+
+networks:
+   webgateway:
+    external: true
